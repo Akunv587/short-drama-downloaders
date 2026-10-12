@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title entrance-1">文本分段</h1>
+<p class="page-subtitle entrance-2">按行数将文本拆分为多个片段</p>
+
+<div class="card-panel entrance-2" x-data="textSplit()">
+  <div class="form-group">
+    <label class="form-label">粘贴文本</label>
+    <textarea class="form-textarea" x-model="text" placeholder="在此粘贴文本..." rows="8"></textarea>
+  </div>
+  <div class="form-group">
+    <label class="form-label">每段行数</label>
+    <input class="form-input" x-model.number="linesPerSegment" type="number" min="1" style="max-width:120px"/>
+  </div>
+  <button class="btn btn-primary" @click="split()">拆分</button>
+
+  <!-- Results -->
+  <div x-show="segments.length > 0" style="margin-top:24px">
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px" x-text="totalLines + ' 行 → ' + segments.length + ' 段'"></div>
+    <template x-for="seg in segments" :key="seg.index">
+      <div style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-input)">
+          <span style="font-size:13px;font-weight:600" x-text="'第 ' + seg.index + ' 段（' + seg.lines + ' 行）'"></span>
+          <button class="btn btn-secondary btn-xs" @click="$store.app.copy(seg.content,'片段已复制')">复制</button>
+        </div>
+        <div style="padding:12px;font-size:13px;white-space:pre-wrap;max-height:200px;overflow-y:auto" x-text="seg.content"></div>
+      </div>
+    </template>
+    <button class="btn btn-primary btn-sm" @click="downloadAll()" style="margin-top:8px">全部下载为 TXT</button>
+  </div>
+</div>
+<script>
+function textSplit() {
+  return {
+    text: '', linesPerSegment: 30,
+    segments: [], totalLines: 0,
+    async split() {
+      try {
+        const data = await Alpine.store('app').api('/api/text/split', {
+          method: 'POST',
+          body: JSON.stringify({ text: this.text, lines_per_segment: this.linesPerSegment }),
+        });
+        this.segments = data.segments || [];
+        this.totalLines = data.total_lines || 0;
+      } catch(e) {}
+    },
+    downloadAll() {
+      const all = this.segments.map((s,i) => `=== Segment ${s.index} (${s.lines} lines) ===\n${s.content}`).join('\n\n');
+      const blob = new Blob([all], {type:'text/plain'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'split_text.txt'; a.click();
+    },
+  };
+}
+</script>
+{% endblock %}

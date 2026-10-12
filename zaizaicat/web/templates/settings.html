@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title entrance-1">设置</h1>
+<p class="page-subtitle entrance-2">配置应用偏好</p>
+
+<div class="card-panel entrance-2" x-data="settingsPage()" x-init="loadSettings()">
+  <div class="form-group">
+    <label class="form-label">下载目录</label>
+    <input class="form-input" x-model="settings.download_dir" placeholder="默认: downloads/"/>
+  </div>
+  <div class="form-group" style="display:flex;align-items:center;gap:12px">
+    <label class="form-label" style="margin-bottom:0">自动响度归一化</label>
+    <input type="checkbox" x-model="settings.auto_normalize" @change="save()"/>
+  </div>
+  <div class="form-group" x-show="settings.auto_normalize">
+    <label class="form-label">目标 LUFS</label>
+    <input class="form-input" x-model="settings.target_lufs" type="number" step="0.1" style="max-width:120px"/>
+  </div>
+  <div class="form-group" style="display:flex;align-items:center;gap:12px">
+    <label class="form-label" style="margin-bottom:0">自动添加到短剧库</label>
+    <input type="checkbox" x-model="settings.auto_add_drama" @change="save()"/>
+  </div>
+  <button class="btn btn-primary" @click="save()">保存设置</button>
+</div>
+<script>
+function settingsPage() {
+  return {
+    settings: {},
+    async loadSettings() {
+      try {
+        const data = await Alpine.store('app').api('/api/settings');
+        const raw = data.settings || {};
+        this.settings = {
+          download_dir: raw.download_dir || '',
+          auto_normalize: raw.auto_normalize === 'true',
+          auto_add_drama: raw.auto_add_drama === 'true',
+          target_lufs: raw.target_lufs || '-14.0',
+        };
+      } catch(e) {}
+    },
+    async save() {
+      await Alpine.store('app').api('/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          settings: {
+            download_dir: this.settings.download_dir || '',
+            auto_normalize: String(this.settings.auto_normalize),
+            auto_add_drama: String(this.settings.auto_add_drama),
+            target_lufs: String(this.settings.target_lufs),
+          }
+        }),
+      });
+      Alpine.store('app').showToast('设置已保存', 'success');
+    },
+  };
+}
+</script>
+{% endblock %}

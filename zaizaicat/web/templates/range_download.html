@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-two-col">
+  <div class="page-two-col-main">
+    <h1 class="page-title entrance-1">范围下载</h1>
+    <p class="page-subtitle entrance-2">粘贴单集链接，发现全部剧集，选择范围下载</p>
+
+    <div class="card-panel entrance-2" x-data="rangeDownload()">
+      <!-- URL Input -->
+      <div class="form-group">
+        <label class="form-label">剧集链接</label>
+        <input class="form-input" x-model="url" placeholder="https://dramashorts.io/shorts/xxx/E01"/>
+      </div>
+
+      <!-- 输出目录 -->
+      <div class="form-group">
+        <label class="form-label">输出目录</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="form-input" x-model="outputDir" placeholder="默认: downloads/" style="flex:1"/>
+          <button class="btn btn-secondary btn-sm" @click="navigator.clipboard.readText().then(t=>{if(t)outputDir=t})">粘贴</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" @click="discover()" :disabled="discovering" style="margin-top:8px">
+        <span x-show="!discovering">提取</span>
+        <span x-show="discovering">发现中...</span>
+      </button>
+
+      <!-- Discovery Results -->
+      <div x-show="totalEpisodes > 0" style="margin-top:20px">
+        <div class="divider-glow" style="margin-bottom:16px"></div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+          <span style="font-size:16px;font-weight:700" x-text="dramaName"></span>
+          <span class="badge badge-blue" x-text="totalEpisodes + ' 集'"></span>
+        </div>
+
+        <!-- Range Input -->
+        <div class="form-group">
+          <label class="form-label">剧集范围</label>
+          <div style="display:flex;gap:8px">
+            <input class="form-input" x-model="rangeInput" placeholder="1-10 / 1 3 5 / 全部" style="flex:1"/>
+            <button class="btn btn-secondary btn-sm" @click="parseRange()">解析</button>
+          </div>
+        </div>
+
+        <!-- Episode List -->
+        <div style="max-height:400px;overflow-y:auto;margin-top:12px">
+          <template x-for="ep in episodes" :key="ep.number">
+            <div style="display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:6px"
+                 :style="selectedEpisodes.includes(ep.number) ? {background:'var(--accent-dim)',border:'1px solid var(--accent)'} : {opacity:selectedEpisodes.length>0?'0.4':'1'}">
+              <span style="font-size:13px;font-weight:500" x-text="'E' + ep.number"></span>
+              <span style="font-size:12px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="ep.url"></span>
+            </div>
+          </template>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px">
+          <span style="font-size:13px;color:var(--text-muted)" x-text="'已选：' + selectedEpisodes.length + ' 集'"></span>
+          <button class="btn btn-primary" @click="downloadSelected()" :disabled="selectedEpisodes.length === 0">下载选中</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+      <!-- ═══ SIDE PANELS ═══ -->
+      <aside class="page-two-col-side">
+        <!-- 平台状态 -->
+        <div class="card-panel w-full entrance-3" x-data="{ platforms: {} }" x-init="fetch('/api/platform/status').then(r=>r.json()).then(d=>platforms=d.platforms||{})">
+          <div class="text-base font-semibold" style="margin-bottom:16px;color:var(--text-primary)">平台状态</div>
+          <template x-for="(info, key) in platforms" :key="key">
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0">
+              <div class="status-dot-wrap">
+                <span class="status-dot" :style="{background:info.accent}"></span>
+                <span class="status-ring" :style="{borderColor:info.accent}"></span>
+                <span class="status-ring" :style="{borderColor:info.accent}"></span>
+                <span class="status-ring" :style="{borderColor:info.accent}"></span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:14px;font-weight:500" x-text="info.name"></span>
+                <span style="font-size:12px;color:var(--text-muted)" x-text="info.domain"></span>
+              </div>
+              <span class="status-badge" :style="{background:info.accent+'14',color:info.accent,border:'0.5px solid '+info.accent+'22'}" x-text="info.status"></span>
+            </div>
+          </template>
+        </div>
+
+        <!-- TikTok 工具 -->
+        <div class="card-panel w-full entrance-4" x-data="{ cookieStatus: '', proxyStatus: '' }">
+          <div class="text-base font-semibold" style="margin-bottom:12px;color:var(--text-primary)">TikTok 工具</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px" x-text="cookieStatus || proxyStatus || '就绪'"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-xs" @click="cookieStatus='检测 Chrome 中...';fetch('/api/tiktool/cookie',{method:'POST'}).then(r=>r.json()).then(d=>{cookieStatus=d.message;$store.app.showToast(d.message,d.success?'success':'error')})">刷新 Cookie</button>
+            <button class="btn btn-secondary btn-xs" @click="proxyStatus='检测代理中...';fetch('/api/tiktool/proxy',{method:'POST'}).then(r=>r.json()).then(d=>{proxyStatus=d.proxy_url||'无代理';$store.app.showToast(d.proxy_url?'代理: '+d.proxy_url:'未检测到代理',d.success?'success':'warning')})">检测代理</button>
+          </div>
+          <div class="divider-glow" style="margin:16px 0"></div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6"><strong>TikTok</strong> — 需要 yt-dlp + Cookie</div>
+        </div>
+
+        <!-- 使用说明 -->
+        <div class="card-panel w-full entrance-4">
+          <div class="text-base font-semibold" style="margin-bottom:16px;color:var(--text-primary)">使用说明</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div class="guide-row" style="display:flex;align-items:flex-start;gap:12px;padding:6px 0">
+              <span class="step-num">1</span>
+              <span style="font-size:14px;color:var(--text-secondary);line-height:1.6">粘贴首集链接 + 设置范围为「全部」即可下载整部剧</span>
+            </div>
+            <div class="guide-row" style="display:flex;align-items:flex-start;gap:12px;padding:6px 0">
+              <span class="step-num">2</span>
+              <span style="font-size:14px;color:var(--text-secondary);line-height:1.6">多部短剧：每行粘贴一个链接</span>
+            </div>
+            <div class="guide-row" style="display:flex;align-items:flex-start;gap:12px;padding:6px 0">
+              <span class="step-num">3</span>
+              <span style="font-size:14px;color:var(--text-secondary);line-height:1.6">范围格式：1-10 / 1,3,5 / 全部 / 留空(单集)</span>
+            </div>
+            <div class="guide-row" style="display:flex;align-items:flex-start;gap:12px;padding:6px 0">
+              <span class="step-num">4</span>
+              <span style="font-size:14px;color:var(--text-secondary);line-height:1.6">不同平台同时下载；同平台自动排队</span>
+            </div>
+          </div>
+          <div class="divider-glow" style="margin:16px 0"></div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6"><strong>DramaShorts</strong> — 免费下载<br><strong>ShortMax</strong> — 免费下载（需代理）</div>
+        </div>
+      </aside>
+
+</div>
+
+<script>
+function rangeDownload() {
+  return {
+    url: '',
+    outputDir: '',
+    discovering: false,
+    dramaName: '',
+    totalEpisodes: 0,
+    episodes: [],
+    rangeInput: '',
+    selectedEpisodes: [],
+    async discover() {
+      if (!this.url.trim()) return;
+      this.discovering = true;
+      try {
+        const data = await Alpine.store('app').api('/api/extract/episodes', {
+          method: 'POST',
+          body: JSON.stringify({ url: this.url.trim() }),
+        });
+        this.dramaName = data.drama_name || 'Unknown';
+        this.totalEpisodes = data.total_episodes || 0;
+        this.episodes = data.episodes || [];
+      } catch(e) {} finally { this.discovering = false; }
+    },
+    parseRange() {
+      const raw = this.rangeInput.trim();
+      if (!raw || raw.toLowerCase() === 'all') {
+        this.selectedEpisodes = this.episodes.map(e => e.number);
+        return;
+      }
+      const nums = new Set();
+      const parts = raw.split(/[,\s]+/);
+      for (const part of parts) {
+        if (part.includes('-')) {
+          const [a, b] = part.split('-').map(Number);
+          if (!isNaN(a) && !isNaN(b)) {
+            for (let i = Math.min(a,b); i <= Math.max(a,b); i++) nums.add(i);
+          }
+        } else {
+          const n = parseInt(part);
+          if (!isNaN(n)) nums.add(n);
+        }
+      }
+      this.selectedEpisodes = [...nums].filter(n =>
+        this.episodes.some(e => e.number === n)
+      ).sort((a,b) => a - b);
+    },
+    async downloadSelected() {
+      for (const num of this.selectedEpisodes) {
+        const ep = this.episodes.find(e => e.number === num);
+        if (ep) {
+          await Alpine.store('app').api('/api/download/start', {
+            method: 'POST',
+            body: JSON.stringify({ url: ep.url, platform: 'unknown', drama_name: this.dramaName, episode_number: num, output_dir: this.outputDir }),
+          });
+        }
+      }
+      Alpine.store('app').showToast(`${this.selectedEpisodes.length} 个任务已提交`, 'success');
+    },
+  };
+}
+</script>
+{% endblock %}

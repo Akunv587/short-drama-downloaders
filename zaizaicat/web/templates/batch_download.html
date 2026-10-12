@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-two-col">
+  <div class="page-two-col-main">
+    <h1 class="page-title entrance-1">批量下载</h1>
+    <p class="page-subtitle entrance-2">粘贴多个视频链接，每行一个</p>
+
+    <div class="card-panel entrance-2" x-data="batchDownload()">
+      <!-- URL Input -->
+      <div class="form-group">
+        <label class="form-label">视频链接</label>
+        <textarea class="form-textarea" x-model="urls" placeholder="https://dramashorts.io/shorts/xxx&#10;https://shorttv.live/episode/xxx&#10;https://www.tiktok.com/@user/video/xxx" rows="6"></textarea>
+      </div>
+
+      <!-- 输出目录 -->
+      <div class="form-group">
+        <label class="form-label">输出目录</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="form-input" x-model="outputDir" placeholder="默认: downloads/" style="flex:1"/>
+          <button class="btn btn-secondary btn-sm" @click="navigator.clipboard.readText().then(t=>{if(t)outputDir=t})">粘贴</button>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:12px;align-items:center;margin-top:20px">
+        <button class="btn btn-primary" @click="extract()" :disabled="extracting">
+          <span x-show="!extracting">提取</span>
+          <span x-show="extracting">提取中...</span>
+        </button>
+        <button class="btn btn-secondary" x-show="results.length > 0" @click="downloadAll()">全部下载</button>
+      </div>
+
+      <!-- Results -->
+      <div x-show="results.length > 0" style="margin-top:20px">
+        <div class="divider-glow" style="margin-bottom:16px"></div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px" x-text="results.length + ' 个剧集'"></div>
+        <div style="max-height:400px;overflow-y:auto">
+          <template x-for="(r, i) in results" :key="i">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+              <div>
+                <span style="font-size:13px;font-weight:500" x-text="r.drama_name || '未知'"></span>
+                <span style="font-size:11px;color:var(--text-muted);margin-left:8px" x-text="r.platform"></span>
+                <span style="font-size:11px;color:var(--text-muted);margin-left:4px" x-text="r.episode_number ? 'E'+r.episode_number : ''"></span>
+              </div>
+              <button class="btn btn-secondary btn-xs" @click="downloadOne(r)">下载</button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+      <!-- ═══ SIDE PANELS ═══ -->
+      <aside class="page-two-col-side">
+        <!-- 平台状态 -->
+        <div class="card-panel w-full entrance-3" x-data="{ platforms: {} }" x-init="fetch('/api/platform/status').then(r=>r.json()).then(d=>platforms=d.platforms||{})">
+          <div class="text-base font-semibold" style="margin-bottom:16px;color:var(--text-primary)">平台状态</div>
+          <template x-for="(info, key) in platforms" :key="key">
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0">
+              <div class="status-dot-wrap">
+                <span class="status-dot" :style="{background:info.accent}"></span>
+                <span class="status-ring" :style="{borderColor:info.accent}"></span>
+                <span class="status-ring" :style="{borderColor:info.accent}"></span>
+                <span class="status-ring" :style="{borderColor:info.accent}"></span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:14px;font-weight:500" x-text="info.name"></span>
+                <span style="font-size:12px;color:var(--text-muted)" x-text="info.domain"></span>
+              </div>
+              <span class="status-badge" :style="{background:info.accent+'14',color:info.accent,border:'0.5px solid '+info.accent+'22'}" x-text="info.status"></span>
+            </div>
+          </template>
+        </div>
+
+        <!-- TikTok 工具 -->
+        <div class="card-panel w-full entrance-4" x-data="{ cookieStatus: '', proxyStatus: '' }">
+          <div class="text-base font-semibold" style="margin-bottom:12px;color:var(--text-primary)">TikTok 工具</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px" x-text="cookieStatus || proxyStatus || '就绪'"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-xs" @click="cookieStatus='检测 Chrome 中...';fetch('/api/tiktool/cookie',{method:'POST'}).then(r=>r.json()).then(d=>{cookieStatus=d.message;$store.app.showToast(d.message,d.success?'success':'error')})">刷新 Cookie</button>
+            <button class="btn btn-secondary btn-xs" @click="proxyStatus='检测代理中...';fetch('/api/tiktool/proxy',{method:'POST'}).then(r=>r.json()).then(d=>{proxyStatus=d.proxy_url||'无代理';$store.app.showToast(d.proxy_url?'代理: '+d.proxy_url:'未检测到代理',d.success?'success':'warning')})">检测代理</button>
+          </div>
+          <div class="divider-glow" style="margin:16px 0"></div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6"><strong>TikTok</strong> — 需要 yt-dlp + Cookie</div>
+        </div>
+
+        <!-- 使用说明 -->
+        <div class="card-panel w-full entrance-4">
+          <div class="text-base font-semibold" style="margin-bottom:16px;color:var(--text-primary)">使用说明</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div class="guide-row" style="display:flex;align-items:flex-start;gap:12px;padding:6px 0">
+              <span class="step-num">1</span>
+              <span style="font-size:14px;color:var(--text-secondary);line-height:1.6">粘贴首集链接 + 设置范围为「全部」即可下载整部剧</span>
+            </div>
+            <div class="guide-row" style="display:flex;align-items:flex-start;gap:12px;padding:6px 0">
+              <span class="step-num">2</span>
+              <span style="font-size:14px;color:var(--text-secondary);line-height:1.6">多部短剧：每行粘贴一个链接</span>
+            </div>
+            <div class="guide-row" style="display:flex;align-items:flex-start;gap:12px;padding:6px 0">
+              <span class="step-num">3</span>
+              <span style="font-size:14px;color:var(--text-secondary);line-height:1.6">范围格式：1-10 / 1,3,5 / 全部 / 留空(单集)</span>
+            </div>
+            <div class="guide-row" style="display:flex;align-items:flex-start;gap:12px;padding:6px 0">
+              <span class="step-num">4</span>
+              <span style="font-size:14px;color:var(--text-secondary);line-height:1.6">不同平台同时下载；同平台自动排队</span>
+            </div>
+          </div>
+          <div class="divider-glow" style="margin:16px 0"></div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.6"><strong>DramaShorts</strong> — 免费下载<br><strong>ShortMax</strong> — 免费下载（需代理）</div>
+        </div>
+      </aside>
+
+</div>
+
+<script>
+function batchDownload() {
+  return {
+    urls: '',
+    outputDir: '',
+    extracting: false,
+    results: [],
+    async extract() {
+      if (!this.urls.trim()) return;
+      this.extracting = true;
+      try {
+        const lines = this.urls.trim().split('\n').filter(l => l.trim());
+        const data = await Alpine.store('app').api('/api/extract/batch', {
+          method: 'POST',
+          body: JSON.stringify({ urls: lines }),
+        });
+        this.results = data.results || [];
+      } catch(e) {} finally { this.extracting = false; }
+    },
+    async downloadOne(r) {
+      await Alpine.store('app').api('/api/download/start', {
+        method: 'POST',
+        body: JSON.stringify({ url: r.url, platform: r.platform, drama_name: r.drama_name, episode_number: r.episode_number, output_dir: this.outputDir }),
+      });
+      Alpine.store('app').showToast('任务已提交', 'success');
+    },
+    async downloadAll() {
+      for (const r of this.results) await this.downloadOne(r);
+    },
+  };
+}
+</script>
+{% endblock %}

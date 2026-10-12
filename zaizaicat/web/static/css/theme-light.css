@@ -1,0 +1,31 @@
+/* theme-light.css - 亮色主题变量 */
+:root {
+    --color-bg-primary: #FFFFFF;
+    --color-bg-secondary: #F7F8FA;
+    --color-bg-tertiary: #EEF0F3;
+    --color-bg-hover: #F0F1F4;
+    --color-text-primary: #1A1A1A;
+    --color-text-secondary: #6B7280;
+    --color-text-tertiary: #9CA3AF;
+    --color-border: #E5E7EB;
+    --color-border-light: #F0F0F3;
+    --color-accent: #2563EB;
+    --color-accent-hover: #1D4ED8;
+    --color-accent-light: #EEF2FF;
+    --color-success: #10B981;
+    --color-success-light: #ECFDF5;
+    --color-warning: #F59E0B;
+    --color-warning-light: #FFFBEB;
+    --color-danger: #EF4444;
+    --color-danger-light: #FEF2F2;
+    --color-info: #3B82F6;
+    --color-info-light: #EFF6FF;
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.03);
+    --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    --radius: 8px;
+    --radius-sm: 4px;
+    --radius-lg: 12px;
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+}

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视频号下载器 - 批量模式</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f5f5f5; --text: #333; --muted: #999; --secondary: #666;
+  --surface: #fff; --surface-subtle: #fafafa; --border: #eee;
+  --input-bg: #fff; --input-border: #ddd;
+  --brand: #07c160; --brand-hover: #06ad56; --brand-disabled: #a0d9b8;
+  --error: #e74c3c; --warn: #f39c12; --shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0f1115; --text: #e7e9ee; --muted: #9098a8; --secondary: #b6bcc8;
+    --surface: #171b22; --surface-subtle: #11151c; --border: #29313d;
+    --input-bg: #12161d; --input-border: #3a4352;
+    --brand: #10c96b; --brand-hover: #0fb960; --brand-disabled: #315f43;
+    --error: #ff6b63; --warn: #f0b855; --shadow: 0 12px 32px rgba(0,0,0,.32);
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:24px}
+.container{max-width:860px;margin:0 auto}
+h1{font-size:22px;margin-bottom:6px;text-align:center}
+.subtitle{text-align:center;color:var(--muted);font-size:13px;margin-bottom:8px}
+
+/* 模式切换 */
+.mode-tabs{display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.mode-tab{flex:1;padding:8px;text-align:center;cursor:pointer;font-size:14px;background:var(--surface-subtle);color:var(--secondary);border:none;transition:.15s}
+.mode-tab.active{background:var(--brand);color:#fff;font-weight:600}
+.mode-tab:hover:not(.active){background:var(--surface);color:var(--text)}
+
+/* 输入区 */
+.input-area{margin-bottom:16px}
+#singleInput{width:100%;padding:10px 14px;border:1px solid var(--input-border);border-radius:8px;background:var(--input-bg);color:var(--text);font-size:14px;outline:none}
+#singleInput:focus{border-color:var(--brand)}
+#batchInput{width:100%;height:200px;padding:10px 14px;border:1px solid var(--input-border);border-radius:8px;background:var(--input-bg);color:var(--text);font-size:13px;outline:none;resize:vertical;font-family:monospace;line-height:1.6}
+#batchInput:focus{border-color:var(--brand)}
+#batchInput::placeholder{color:var(--muted);font-family:inherit}
+.btn-row{display:flex;gap:8px;margin-top:10px}
+.btn{padding:10px 24px;border:none;border-radius:8px;font-size:14px;cursor:pointer;white-space:nowrap;transition:.15s}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-hover)}
+.btn-primary:disabled{background:var(--brand-disabled);cursor:not-allowed}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--secondary)}
+.btn-outline:hover{background:var(--surface-subtle)}
+
+/* 状态 */
+.status{padding:10px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none}
+.status.show{display:block}
+.status.info{background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9}
+.status.error{background:#fbe9e7;color:#c62828;border:1px solid #ffccbc}
+.status.warn{background:#fff8e1;color:#e65100;border:1px solid #ffecb3}
+
+/* 进度条 */
+.progress-wrap{margin-bottom:16px;display:none}
+.progress-wrap.show{display:block}
+.progress-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;background:var(--brand);border-radius:4px;transition:width .3s;width:0%}
+.progress-text{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+
+/* 结果列表 */
+.result-list{display:flex;flex-direction:column;gap:6px}
+.result-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px}
+.result-item .idx{width:32px;text-align:center;font-weight:600;color:var(--muted);flex-shrink:0}
+.result-item .info{flex:1;min-width:0}
+.result-item .title{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result-item .status-ok{color:var(--brand);font-size:12px}
+.result-item .status-err{color:var(--error);font-size:12px}
+.result-item .actions{display:flex;gap:6px;flex-shrink:0}
+.result-item .btn-sm{padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;text-decoration:none}
+.result-item .btn-dl{background:var(--brand);color:#fff}
+.result-item .btn-dl:hover{background:var(--brand-hover)}
+
+/* 单集结果 */
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;box-shadow:var(--shadow)}
+.result-card-header{padding:14px 20px;border-bottom:1px solid var(--border);font-weight:600;font-size:14px}
+.result-card-body{padding:20px;display:flex;gap:16px;flex-wrap:wrap}
+.result-card video{width:320px;max-width:100%;border-radius:8px;background:#000}
+.result-card .meta{flex:1;display:flex;flex-direction:column;gap:8px;min-width:200px}
+.result-card .meta .author{display:flex;align-items:center;gap:8px}
+.result-card .meta .author img{width:36px;height:36px;border-radius:50%}
+.result-card .stats{display:flex;gap:16px;color:var(--muted);font-size:13px}
+.result-card .btn-row{margin-top:8px}
+
+.footer{text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
+.footer a{color:var(--brand);text-decoration:none}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1> 微信视频号下载器</h1>
+  <p class="subtitle">支持单集解析 · 批量粘贴 · 一键获取全部下载链接</p>
+
+  <!-- 模式切换 -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchMode('batch')"> 批量模式 (贴多行链接)</button>
+    <button class="mode-tab" onclick="switchMode('single')"> 单集模式 (贴一个链接)</button>
+  </div>
+
+  <!-- 批量输入 -->
+  <div id="batchArea" class="input-area">
+    <textarea id="batchInput" placeholder="粘贴多行链接，每行一个，例如：&#10;https://weixin.qq.com/sph/AAAAAA&#10;https://weixin.qq.com/sph/BBBBBB&#10;https://weixin.qq.com/sph/CCCCCC&#10;...&#10;&#10;共45集可一次粘贴全部链接"></textarea>
+    <div class="btn-row">
+      <button id="batchBtn" class="btn btn-primary" onclick="doBatchFetch()"> 一键解析全部</button>
+      <span style="font-size:12px;color:var(--muted);align-self:center;margin-left:8px" id="linkCount"></span>
+    </div>
+  </div>
+
+  <!-- 单集输入 -->
+  <div id="singleArea" class="input-area hidden">
+    <input id="singleInput" type="text" placeholder="粘贴视频号分享链接，如 https://weixin.qq.com/sph/xxx" autofocus>
+    <div class="btn-row">
+      <button id="singleBtn" class="btn btn-primary" onclick="doSingleFetch()">查询</button>
+    </div>
+  </div>
+
+  <!-- 状态 -->
+  <div id="status" class="status"></div>
+
+  <!-- 进度条 -->
+  <div id="progressWrap" class="progress-wrap">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-text"><span id="progressLabel">准备中...</span><span id="progressCount">0/0</span></div>
+  </div>
+
+  <!-- 结果区 -->
+  <div id="resultArea"></div>
+
+  <div class="footer">
+    基于 <a href="https://github.com/ltaoo/wx_channels_download" target="_blank">wx_channels_download</a> · 
+    解析源: sph.litao.workers.dev
+  </div>
+</div>
+
+<script>
+const API = "/api";
+let currentMode = "batch";
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll(".mode-tab").forEach((t,i) => t.classList.toggle("active", (i===0&&mode==="batch")||(i===1&&mode==="single")));
+  document.getElementById("batchArea").classList.toggle("hidden", mode !== "batch");
+  document.getElementById("singleArea").classList.toggle("hidden", mode !== "single");
+  document.getElementById("resultArea").innerHTML = "";
+  document.getElementById("status").className = "status";
+  document.getElementById("progressWrap").classList.remove("show");
+}
+
+// 批量计数
+document.getElementById("batchInput").addEventListener("input", () => {
+  const lines = document.getElementById("batchInput").value.split("\n").filter(l => l.trim().startsWith("http"));
+  document.getElementById("linkCount").textContent = lines.length ? `检测到 ${lines.length} 个链接` : "";
+});
+document.getElementById("singleInput").addEventListener("keydown", e => { if (e.key==="Enter") doSingleFetch(); });
+
+// ---- 工具函数 ----
+function showStatus(msg, cls) {
+  const el = document.getElementById("status");
+  el.textContent = msg; el.className = "status show " + (cls || "info");
+}
+function hideStatus() { document.getElementById("status").className = "status"; }
+
+function esc(s) {
+  if (!s) return ""; const d = document.createElement("div"); d.textContent = s; return d.innerHTML;
+}
+
+function sanitizeFilename(desc, createtime, ext) {
+  const s = "." + (ext || "mp4");
+  if (desc) return desc.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 200) + s;
+  if (createtime) {
+    const d = new Date(Number(createtime) * 1000);
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}${s}`;
+  }
+  return "";
+}
+
+// ---- 单集查询 ----
+async function doSingleFetch() {
+  const url = document.getElementById("singleInput").value.trim();
+  if (!url) return;
+  document.getElementById("singleBtn").disabled = true;
+  document.getElementById("resultArea").innerHTML = "";
+  showStatus("  查询中...", "info");
+  try {
+    const r = await fetch(API + "/fetch_video_profile", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({url}) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error||r.statusText);
+    hideStatus();
+    renderSingleResult(d);
+  } catch(e) {
+    showStatus("  " + e.message, "error");
+  } finally {
+    document.getElementById("singleBtn").disabled = false;
+  }
+}
+
+function renderSingleResult(feed) {
+  const fi = feed.data?.feedInfo, ai = feed.data?.authorInfo;
+  let h = '<div class="result-card"><div class="result-card-header">查询结果</div><div class="result-card-body">';
+  const bestUrl = fi?.h264VideoInfo?.videoUrl || fi?.h265VideoInfo?.videoUrl || fi?.videoUrl || "";
+  const coverUrl = fi?.coverUrl || "";
+  if (bestUrl) h += `<video src="${esc(bestUrl)}" poster="${esc(coverUrl)}" controls preload="metadata"></video>`;
+  h += '<div class="meta">';
+  if (ai) h += `<div class="author"><img src="${esc(ai.headImgUrl)}" onerror="this.style.display='none'"><span style="font-weight:600">${esc(ai.nickname)}</span></div>`;
+  if (fi?.description) h += `<div style="color:var(--secondary);line-height:1.6">${esc(fi.description)}</div>`;
+  if (fi) h += `<div class="stats"><span>  ${esc(fi.likeCountFmt||'0')}</span><span>  爱心 ${esc(fi.favCountFmt||'0')}</span><span>  转发 ${esc(fi.forwardCountFmt||'0')}</span></div>`;
+  if (bestUrl) {
+    const fn = sanitizeFilename(fi?.description, fi?.createtime, "mp4")||"video.mp4";
+    h += `<div class="btn-row"><a class="btn btn-primary" href="${API}/download?url=${encodeURIComponent(bestUrl)}&filename=${encodeURIComponent(fn)}">  下载视频</a></div>`;
+  }
+  h += '</div></div></div>';
+  document.getElementById("resultArea").innerHTML = h;
+}
+
+// ---- 批量解析 (SSE) ----
+async function doBatchFetch() {
+  const lines = document.getElementById("batchInput").value.split("\n").map(l=>l.trim()).filter(l=>l.startsWith("http"));
+  if (!lines.length) { showStatus("请粘贴至少一个链接", "warn"); return; }
+
+  document.getElementById("batchBtn").disabled = true;
+  document.getElementById("resultArea").innerHTML = "";
+  document.getElementById("progressWrap").classList.add("show");
+  document.getElementById("progressFill").style.width = "0%";
+  document.getElementById("progressCount").textContent = `0/${lines.length}`;
+  document.getElementById("progressLabel").textContent = "  解析中...";
+  showStatus(`  开始解析 ${lines.length} 个链接...`, "info");
+
+  const results = [];
+
+  try {
+    const r = await fetch(API + "/batch_fetch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ urls: lines }),
+    });
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop();
+      for (const part of parts) {
+        const line = part.replace(/^data: /, "").trim();
+        if (!line) continue;
+        try {
+          const msg = JSON.parse(line);
+          handleBatchMsg(msg, lines.length);
+          if (msg.type === "result") results.push(msg);
+        } catch(e) {}
+      }
+    }
+  } catch(e) {
+    showStatus("  " + e.message, "error");
+  } finally {
+    document.getElementById("batchBtn").disabled = false;
+    document.getElementById("progressWrap").classList.remove("show");
+  }
+}
+
+function handleBatchMsg(msg, total) {
+  switch (msg.type) {
+    case "start":
+      document.getElementById("progressLabel").textContent = "  解析中...";
+      break;
+    case "progress":
+      const pct = Math.round((msg.index / total) * 100);
+      document.getElementById("progressFill").style.width = pct + "%";
+      document.getElementById("progressCount").textContent = `${msg.index}/${total}`;
+      document.getElementById("progressLabel").textContent = `  解析: ${msg.url.substring(msg.url.lastIndexOf("/")+1)}`;
+      break;
+    case "result":
+      addBatchResult(msg, total);
+      document.getElementById("progressFill").style.width = Math.round(((msg.index+1)/total)*100) + "%";
+      document.getElementById("progressCount").textContent = `${msg.index+1}/${total}`;
+      break;
+    case "complete":
+      const ok = msg.success || 0;
+      showStatus(`  完成! 成功 ${ok}/${msg.total}，点击下方按钮逐个下载`, ok===msg.total?"info":"warn");
+      document.getElementById("progressLabel").textContent = "  完成";
+      break;
+    case "error":
+      showStatus("  " + msg.message, "error");
+      break;
+  }
+}
+
+function addBatchResult(msg, total) {
+  const div = document.createElement("div");
+  div.className = "result-list";
+  div.id = "resultList";
+  let existing = document.getElementById("resultList");
+  if (!existing) {
+    document.getElementById("resultArea").prepend(div);
+    existing = div;
+  }
+
+  const item = document.createElement("div");
+  item.className = "result-item";
+  const num = String(msg.index + 1).padStart(2, "0");
+  if (msg.status === "ok") {
+    item.innerHTML = `
+      <span class="idx">${num}</span>
+      <span class="info"><span class="title">${esc(msg.title||"无标题")}</span></span>
+      <span class="actions">
+        <a class="btn-sm btn-dl" href="${msg.downloadUrl}" download>  下载</a>
+      </span>`;
+  } else {
+    item.innerHTML = `
+      <span class="idx">${num}</span>
+      <span class="info"><span class="title">${esc(msg.url)}</span><br><span class="status-err">${esc(msg.message)}</span></span>`;
+  }
+  existing.appendChild(item);
+}
+</script>
+</body>
+</html>

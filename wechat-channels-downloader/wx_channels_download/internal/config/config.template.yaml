@@ -1,0 +1,83 @@
+debug:
+  error: false
+  echolog: false
+
+workdir: ""
+
+pagespy:
+  enabled: false
+  protocol: http
+  api: 127.0.0.1:6752
+
+download:
+  filenameTemplate: "{{filename}}_{{spec}}"
+  dir: "%UserDownloads%"
+  playDoneAudio: true
+  maxRunning: 3
+  remoteServer:
+    enabled: false
+    protocol: "http"
+    hostname: "192.168.1.2"
+    port: 2022
+
+api:
+  protocol: "http"
+  hostname: "127.0.0.1"
+  port: 2022
+
+update:
+  proxy: ""
+  mirror: ""
+
+db:
+  type: "sqlite"
+  host: ""
+  port: ""
+  username: ""
+  password: ""
+  filename: ""
+  filepath: "%CWD%/data.db"
+
+proxy:
+  enabled: true
+  system: true
+  hostname: "127.0.0.1"
+  port: 2023
+  tcpRelay:
+    enabled: false
+    hostname: "127.0.0.1"
+    port: 9900
+  tun: false
+  defaultInterface: ""
+  skipInstallRootCert: false
+  upstreamProxy: ""
+
+channels:
+  enabled: true
+  disableLocationToHome: false
+  download:
+    defaultHighest: false
+    frontend: false
+    pauseWhenDownload: false
+    forceCheckAllFeeds: false
+
+mp:
+  enabled: false
+  remoteServer:
+    protocol: "http"
+    hostname: ""
+    port: 80
+  refreshToken: "wx_channels_download"
+  tokenFilepath: ""
+  refreshSkipMinutes: 20
+  maxWebsocketClients: 5
+
+cloudflare:
+  accountId: ""
+  apiToken: ""
+  refreshToken: "wx_channels_download"
+  adminToken: ""
+  workerName: "mp-rss-api"
+  d1Name: "mp-rss-db"
+  sphWorkerName: "sph"
+  sphCookie: ""

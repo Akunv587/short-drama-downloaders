@@ -1,0 +1,161 @@
+package interceptor
+
+import (
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+
+	"github.com/ltaoo/echo"
+	"github.com/rs/zerolog"
+
+	"wx_channel/internal/buildtags"
+	"wx_channel/internal/interceptor/proxy"
+	"wx_channel/pkg/certificate"
+	"wx_channel/pkg/platform"
+	"wx_channel/pkg/system"
+)
+
+type Interceptor struct {
+	Version     string
+	Debug       bool
+	Settings    *InterceptorConfig
+	Headers     map[string]string
+	Cert        *certificate.CertFileAndKeyFile
+	proxy       proxy.InnerProxy
+	PostPlugins []interface{} // echo plugins, passed to echo after initialization
+	log         *zerolog.Logger
+	OnCookies   func(url string, cookies []*http.Cookie) // Callback invoked when cookies are captured
+}
+
+func NewInterceptor(cfg *InterceptorConfig, cert *certificate.CertFileAndKeyFile, logger *zerolog.Logger) *Interceptor {
+	log := newInterceptorLogger(logger, cfg.Version)
+	return &Interceptor{
+		Version:  cfg.Version,
+		Debug:    cfg.DebugShowError,
+		Settings: cfg,
+		Cert:     cert,
+		log:      log,
+		proxy:    nil,
+	}
+}
+
+func newInterceptorLogger(parent *zerolog.Logger, version string) *zerolog.Logger {
+	if parent == nil {
+		l := zerolog.New(io.Discard).With().Timestamp().Str("component", "interceptor").Str("version", version).Logger()
+		return &l
+	}
+	l := parent.With().Str("component", "interceptor").Str("version", version).Logger()
+	return &l
+}
+
+func (c *Interceptor) Start() error {
+	echo.SetLogEnabled(c.Settings.EchoLogEnabled)
+	client, err := proxy.NewProxy(c.Cert.Cert, c.Cert.PrivateKey, c.Settings.ProxyUpstreamProxy, c.Settings.ProxyTun, c.Settings.ProxyServerHostname, c.Settings.ProxyServerPort, c.Settings.ProxyDefaultInterface, &proxy.TCPRelayConfig{
+		Enabled:  c.Settings.ProxyTCPRelayEnabled,
+		Hostname: c.Settings.ProxyTCPRelayHostname,
+		Port:     c.Settings.ProxyTCPRelayPort,
+	})
+	if err != nil {
+		return err
+	}
+	if len(c.PostPlugins) != 0 {
+		for _, plugin := range c.PostPlugins {
+			client.AddPlugin(plugin)
+		}
+	}
+	c.proxy = client
+	if !c.Settings.ProxySkipInstallRootCert {
+		existing, err := certificate.CheckHasCertificate(c.Cert.Name)
+		if err != nil {
+			return fmt.Errorf("检查证书失败: %v", err)
+		}
+		if !existing {
+			if !platform.IsAdmin() {
+				if !platform.RequestAdminPermission() {
+					return fmt.Errorf("运行失败，请右键选择「以管理员身份运行」")
+				}
+				// The elevated process inherits the current arguments and will
+				// restart the proxy setup, including certificate installation.
+				os.Exit(0)
+			}
+			fmt.Printf("Installing certificate...\n")
+			if err := certificate.InstallCertificate(c.Cert.Cert); err != nil {
+				return fmt.Errorf("安装证书失败: %v", err)
+			}
+		}
+	}
+	if !buildtags.UsingSunnyNet && c.Settings.ProxySetSystem && !c.Settings.ProxyTun {
+		if err := system.EnableProxy(system.ProxySettings{
+			Device:   c.Settings.ProxyDevice,
+			Hostname: c.Settings.ProxyServerHostname,
+			Port:     strconv.Itoa(c.Settings.ProxyServerPort),
+		}); err != nil {
+			return fmt.Errorf("设置代理失败: %v", err)
+		}
+	}
+	if err := client.Start(c.Settings.ProxyServerPort); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Interceptor) Stop() error {
+	if !buildtags.UsingSunnyNet && c.Settings.ProxySetSystem && !c.Settings.ProxyTun {
+		arg := system.ProxySettings{
+			Device:   c.Settings.ProxyDevice,
+			Hostname: c.Settings.ProxyServerHostname,
+			Port:     strconv.Itoa(c.Settings.ProxyServerPort),
+		}
+		err := system.DisableProxy(arg)
+		if err != nil {
+			return fmt.Errorf("关闭系统代理失败: %v", err)
+		}
+	}
+	if c.proxy != nil {
+		if err := c.proxy.Close(); err != nil {
+			return fmt.Errorf("关闭代理服务失败: %v", err)
+		}
+	}
+	return nil
+}
+
+func (c *Interceptor) SetVersion(v string) {
+	c.Version = v
+}
+func (c *Interceptor) AddPostPlugin(plugin interface{}) {
+	c.PostPlugins = append(c.PostPlugins, plugin)
+}
+func (c *Interceptor) AddPlugin(plugin interface{}) {
+	if c.proxy != nil {
+		c.proxy.AddPlugin(plugin)
+	}
+}
+
+func (c *Interceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
+	isLocal := false
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		isLocal = true
+	}
+	if host == "localhost" || host == c.Settings.ProxyServerHostname {
+		isLocal = true
+	}
+	if isLocal && r.URL.Path == "/cert" {
+		w.Header().Set("Content-Type", "application/x-x509-ca-cert")
+		w.Header().Set("Content-Disposition", "attachment; filename=\"SunnyNet.cer\"")
+		w.Write(c.Cert.Cert)
+		return
+	}
+	if isLocal && (r.URL.Path == "/" || r.URL.Path == "") {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(w, `<html><head><meta charset="utf-8"><title>wx_channels_download</title><style>@media(prefers-color-scheme:dark){body{background:#3c3c3c;color:#e0e0e0}a{color:#7cb8ff}}</style></head><body><h1>代理服务运行中</h1><p><a href="/cert">点击下载证书</a></p></body></html>`)
+		return
+	}
+	c.proxy.ServeHTTP(w, r)
+}

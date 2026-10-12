@@ -1,0 +1,43 @@
+# 仔仔猫默认配置
+# 路径相对于当前工作目录，或使用绝对路径
+
+# 下载目录
+download_dir: "./downloads"
+
+# HLS 下载参数
+max_concurrent_segments: 8   # 同时下载的 .ts 分片数
+segment_retry_times: 3       # 分片下载失败重试次数
+
+# 并发控制
+max_concurrent_downloads: 1  # 同时下载的剧集数
+
+# Token 缓存目录（默认: ~/.zaizaimao）
+# cache_dir: ""
+
+# 日志级别: DEBUG / INFO / WARNING / ERROR
+log_level: "INFO"
+
+# HTTP 代理（可选）
+# proxy: "http://127.0.0.1:7890"
+
+# ffmpeg 自定义路径（可选，默认从 PATH 查找）
+# ffmpeg_path: ""
+
+# 输出格式: mp4 / mkv / ts
+output_format: "mp4"
+
+# 是否保留临时 .ts 文件（调试用）
+keep_temp_files: false
+
+# ── 视频后处理 ──
+# 下载后自动做响度归一化（需要 ffmpeg）
+normalize_audio: false
+
+# 目标响度 LUFS（-16 适合网络分发，-23 为广播标准）
+# target_lufs: -16.0
+
+# 最大真峰值 dBTP
+# max_true_peak: -1.5
+
+# 保留原始文件（.orig 后缀）
+# keep_original: false

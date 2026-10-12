@@ -1,0 +1,67 @@
+debug:
+  error: false
+  echolog: false
+
+pagespy:
+  protocol: http
+  api: 127.0.0.1:6752
+  enabled: false
+
+download:
+  defaultHighest: false
+  filenameTemplate: "{{filename}}_{{spec}}"
+  dir: "%UserDownloads%"
+  pauseWhenDownload: false
+  playDoneAudio: true
+  frontend: false
+  forceCheckAllFeeds: false
+  remoteServer:
+    enabled: false
+    protocol: "http"
+    hostname: ""
+    port: 2022
+
+api:
+  protocol: "http"
+  hostname: "127.0.0.1"
+  port: 2022
+
+update:
+  proxy: ""
+  mirror: ""
+
+proxy:
+  system: true
+  hostname: "127.0.0.1"
+  port: 2023
+  tcpRelay:
+    enabled: false
+    hostname: "127.0.0.1"
+    port: 9900
+  tun: false
+  defaultInterface: ""
+  skipInstallRootCert: false
+  upstreamProxy: ""
+
+channels:
+  disableLocationToHome: false
+
+mp:
+  enabled: false
+  remoteServer:
+    protocol: "http"
+    hostname: ""
+    port: 80
+  refreshToken: "wx_channels_download"
+  tokenFilepath: ""
+  refreshSkipMinutes: 20
+  maxWebsocketClients: 5
+
+cloudflare:
+  accountId: ""
+  apiToken: ""
+  refreshToken: "wx_channels_download"
+  adminToken: ""
+  workerName: "mp-rss-api"
+  d1Name: "mp-rss-db"
+  sphCookie: "561553b295037d16=lLwPtZH0Rk0tTndFlJgduOpE0P9EY%2BQMsjRFuPSNmdJSbmA%2BiomDdcTmnJrH9X3G0FRdP9SeYaFMaZDmdYcDh%2FYTss%2BMcacYcdI80jiA8LZDFeJ8fQMKltlMTiI4JFQ6ledkkZe9sDNwOEmuIrjz9onh%2Bg3p0zqrBo2%2F%2BAm%2F0fWu8qOoyV7kbTMilEVpQDT26CxWwRXTqFAs8R6o8swdpi0hdt%2FagMEdPTv7j7M1KfJgAaeAtJS9o3ZKGkuqhwSHlVzDUOzKZxyvBzUKWivtpAq7pWuriv55GWWEJjY8rzszR6EO2U0V0Q%3D%3D; _TDID_CK=1786349778496; hy_source=web; hy_user=a038069e22274d15aa645ffbf3e20bd5; hy_token=8tE8bq6InCxff5mUqQZfc9aGHP6NPD80Cr/k258SiLJ9CYW8HiMzU5pREYyvnbvjeFzFHGBaaf9Wl9Cp30+FqXyWF+/Lcaz5YtREz76ORYLccdkw2xFcZ63GnS0QzX715/6Iodqi6pPYVPT8jno3yt8vUxlcHCRAUQeIfAHKBi55CwXHc0uxv4tY05MDLNxfYs1UZydG6yfPN3yvVD70QkjjtTCv0k1dE0mxedPAX514kO3GwiwNRuYiCsgtRiyfX5V90JxO/ktAMBaOjiJPkHmEOYDa7k4erV5NKaOe6+7bSfSdsx1DYcoIM6RV7FdDiwwxTWSqs7XY4MWAd/6SRU2xD/XVcLH84PIdzOQt38lFEPuCjpPlNEGWGVlgUlkCCLUXCfsHrdLrBFZKM8UrWebttZTasoaOiCuFMy/DJ13eSfFUciImdGH1/QCtksfLO3eVVp/ClcYfOtpvJty5aNqlE/UCpFZafOCs3kZiyogjop03T8cOLQmBSlehs1eEiqp01rEpEkGt1dWyzlsG9K+vYx1yHNp+6ztc1EM6RL2G8fFdtS3SMcRCWgbmaMxOHNk0J0NwR33GHgLI4RLQ68XWfjJqRcd5ZKHgfp+LTGK2cNZh5MwceRq3YqwaQIalf/POWT2Z8CEtlsV0qJoO52ElIK4L+tLdGQE1fjKOlEk="

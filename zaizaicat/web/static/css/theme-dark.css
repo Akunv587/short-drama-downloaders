@@ -1,0 +1,26 @@
+/* theme-dark.css - 暗色主题变量 */
+[data-theme="dark"] {
+    --color-bg-primary: #1A1A1A;
+    --color-bg-secondary: #242424;
+    --color-bg-tertiary: #2D2D2D;
+    --color-bg-hover: #333333;
+    --color-text-primary: #F0F0F0;
+    --color-text-secondary: #A0A0A0;
+    --color-text-tertiary: #707070;
+    --color-border: #383838;
+    --color-border-light: #2A2A2A;
+    --color-accent: #3B82F6;
+    --color-accent-hover: #60A5FA;
+    --color-accent-light: #1E3A5F;
+    --color-success: #34D399;
+    --color-success-light: #0F3822;
+    --color-warning: #FBBF24;
+    --color-warning-light: #3D2E0A;
+    --color-danger: #F87171;
+    --color-danger-light: #3B1C1C;
+    --color-info: #60A5FA;
+    --color-info-light: #1E3A5F;
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.03);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}

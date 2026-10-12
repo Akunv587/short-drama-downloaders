@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title entrance-1">下载历史</h1>
+<p class="page-subtitle entrance-2">查看历史下载记录</p>
+
+<div class="card-panel entrance-2" x-data="historyPage()" x-init="load()">
+  <input class="form-input" x-model="search" placeholder="搜索..." style="max-width:250px;margin-bottom:16px" @input.debounce.300ms="load()"/>
+  <div class="table-wrap" style="max-height:500px;overflow-y:auto">
+    <table>
+      <thead><tr><th>剧名</th><th>平台</th><th>集数</th><th>大小</th><th>路径</th><th>完成时间</th><th>操作</th></tr></thead>
+      <tbody>
+        <template x-for="h in items" :key="h.id">
+          <tr>
+            <td x-text="h.drama_name" style="font-weight:500"></td>
+            <td x-text="h.platform"></td>
+            <td x-text="h.episode_count"></td>
+            <td x-text="Utils.formatBytes(h.total_size_bytes)"></td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="h.download_path"></td>
+            <td x-text="Utils.formatDate(h.completed_at)"></td>
+            <td>
+              <button class="btn btn-secondary btn-xs" @click="del(h.id)">删</button>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+    <span style="font-size:13px;color:var(--text-muted)" x-text="'共 ' + total + ' 条'"></span>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-secondary btn-xs" @click="page--;load()" :disabled="page<=1">上一页</button>
+      <span style="font-size:13px;padding:4px 8px" x-text="page + '/' + totalPages"></span>
+      <button class="btn btn-secondary btn-xs" @click="page++;load()" :disabled="page>=totalPages">下一页</button>
+    </div>
+  </div>
+</div>
+<script>
+function historyPage() {
+  return {
+    search: '', page: 1, total: 0, totalPages: 1, items: [],
+    async load() {
+      try {
+        const params = new URLSearchParams({ page: this.page, per_page: 20 });
+        if (this.search) params.set('search', this.search);
+        const data = await Alpine.store('app').api('/api/history?' + params.toString());
+        this.items = data.items || [];
+        this.total = data.total || 0;
+        this.totalPages = data.total_pages || 1;
+      } catch(e) {}
+    },
+    async del(id) {
+      if (!confirm('确认删除此记录？')) return;
+      await Alpine.store('app').api('/api/history/' + id, { method: 'DELETE' });
+      Alpine.store('app').showToast('已删除', 'success');
+      this.load();
+    },
+  };
+}
+</script>
+{% endblock %}

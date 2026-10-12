@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title entrance-1">短剧库</h1>
+<p class="page-subtitle entrance-2">管理你的短剧库</p>
+
+<div class="card-panel entrance-2" x-data="dramaDB()" x-init="loadDramas()">
+  <!-- Search & Filters -->
+  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+    <input class="form-input" x-model="search" placeholder="按名称搜索..." style="max-width:250px" @input.debounce.300ms="loadDramas()"/>
+    <select class="form-select" x-model="statusFilter" @change="loadDramas()" style="max-width:150px">
+      <option value="">全部状态</option>
+      <option value="watched">已看</option>
+      <option value="unwatched">未看</option>
+    </select>
+    <select class="form-select" x-model="platformFilter" @change="loadDramas()" style="max-width:150px">
+      <option value="">全部平台</option>
+      <option value="tiktok">TikTok</option>
+      <option value="shortmax">ShortMax</option>
+      <option value="dramashorts">DramaShorts</option>
+    </select>
+    <select class="form-select" x-model="sortBy" @change="loadDramas()" style="max-width:150px">
+      <option value="created_at">最新</option>
+      <option value="name">名称</option>
+      <option value="play_count">播放量</option>
+    </select>
+    <div style="flex:1"></div>
+    <button class="btn btn-primary btn-sm" @click="showAddModal = true">+ 添加短剧</button>
+  </div>
+
+  <!-- Drama Table -->
+  <div class="table-wrap" style="max-height:500px;overflow-y:auto">
+    <table>
+      <thead><tr><th>名称</th><th>播放量</th><th>集数</th><th>平台</th><th>状态</th><th>来源</th><th>操作</th></tr></thead>
+      <tbody>
+        <template x-for="d in dramas" :key="d.name">
+          <tr>
+            <td x-text="d.name" style="font-weight:500"></td>
+            <td x-text="d.play_count || '-'"></td>
+            <td x-text="d.episode_count || '-'"></td>
+            <td x-text="d.source_platform || '-'"></td>
+            <td>
+              <span class="badge" :class="d.status==='watched'?'badge-green':'badge-yellow'" x-text="d.status"></span>
+            </td>
+            <td x-text="d.data_source || '-'"></td>
+            <td>
+              <button class="btn btn-secondary btn-xs" @click="toggleStatus(d)">切换</button>
+              <button class="btn btn-secondary btn-xs" style="margin-left:4px" @click="deleteDrama(d.name)">删</button>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+    <span style="font-size:13px;color:var(--text-muted)" x-text="'共 ' + total + ' 条'"></span>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-secondary btn-xs" @click="page--;loadDramas()" :disabled="page<=1">上一页</button>
+      <span style="font-size:13px;padding:4px 8px" x-text="page + '/' + totalPages"></span>
+      <button class="btn btn-secondary btn-xs" @click="page++;loadDramas()" :disabled="page>=totalPages">下一页</button>
+    </div>
+  </div>
+</div>
+<script>
+function dramaDB() {
+  return {
+    search: '', statusFilter: '', platformFilter: '', sortBy: 'created_at',
+    page: 1, total: 0, totalPages: 1, dramas: [], showAddModal: false,
+    async loadDramas() {
+      try {
+        const params = new URLSearchParams({ page: this.page, per_page: 30, sort_by: this.sortBy });
+        if (this.search) params.set('search', this.search);
+        if (this.statusFilter) params.set('status', this.statusFilter === 'watched' ? 'watched' : 'unwatched');
+        if (this.platformFilter) params.set('platform', this.platformFilter);
+        const data = await Alpine.store('app').api('/api/drama?' + params.toString());
+        this.dramas = data.items || [];
+        this.total = data.total || 0;
+        this.totalPages = data.total_pages || 1;
+      } catch(e) {}
+    },
+    async toggleStatus(d) {
+      const newStatus = d.status === 'watched' ? 'unwatched' : 'watched';
+      await Alpine.store('app').api('/api/drama/' + encodeURIComponent(d.name), {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      this.loadDramas();
+    },
+    async deleteDrama(name) {
+      if (!confirm('确认删除「' + name + '」？')) return;
+      await Alpine.store('app').api('/api/drama/' + encodeURIComponent(name), { method: 'DELETE' });
+      Alpine.store('app').showToast('已删除', 'success');
+      this.loadDramas();
+    },
+  };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title entrance-1">剧集提取</h1>
+<p class="page-subtitle entrance-2">从单个链接发现全部剧集链接</p>
+<div class="card-panel entrance-2" x-data="episodeExtract()">
+  <div class="form-group">
+    <label class="form-label">剧集链接</label>
+    <input class="form-input" x-model="url" placeholder="https://..."/>
+  </div>
+  <button class="btn btn-primary" @click="extract()" :disabled="loading">
+    <span x-show="!loading">提取</span>
+    <span x-show="loading">提取中...</span>
+  </button>
+
+  <div x-show="episodes.length > 0" style="margin-top:20px">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" @click="copyAll()">复制全部</button>
+      <button class="btn btn-secondary btn-sm" @click="exportTXT()">导出 TXT</button>
+      <button class="btn btn-secondary btn-sm" @click="exportCSV()">导出 CSV</button>
+      <button class="btn btn-secondary btn-sm" @click="sendToBatch()">发送到批量下载</button>
+    </div>
+    <div style="max-height:400px;overflow-y:auto">
+      <template x-for="(ep, i) in episodes" :key="i">
+        <div style="display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-weight:600;font-size:13px;min-width:60px" x-text="'E' + ep.number"></span>
+          <span style="font-size:12px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="ep.url"></span>
+          <button class="btn btn-secondary btn-xs" @click="$store.app.copy(ep.url,'已复制')">复制</button>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+<script>
+function episodeExtract() {
+  return {
+    url: '', loading: false, episodes: [],
+    async extract() {
+      if (!this.url.trim()) return;
+      this.loading = true;
+      try {
+        const data = await Alpine.store('app').api('/api/extract/episodes', {
+          method: 'POST',
+          body: JSON.stringify({ url: this.url.trim() }),
+        });
+        this.episodes = data.episodes || [];
+      } catch(e) {} finally { this.loading = false; }
+    },
+    copyAll() {
+      const text = this.episodes.map(e => e.url).join('\n');
+      Alpine.store('app').copy(text, '全部链接已复制');
+    },
+    exportTXT() {
+      const text = this.episodes.map(e => e.url).join('\n');
+      const blob = new Blob([text], {type:'text/plain'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'episodes.txt'; a.click();
+    },
+    exportCSV() {
+      const rows = this.episodes.map(e => `E${e.number},${e.url}`).join('\n');
+      const blob = new Blob(['Episode,URL\n'+rows], {type:'text/csv'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'episodes.csv'; a.click();
+    },
+    sendToBatch() {
+      const urls = this.episodes.map(e => e.url).join('\n');
+      sessionStorage.setItem('batchUrls', urls);
+      window.location.href = '/batch-download';
+    },
+  };
+}
+</script>
+{% endblock %}

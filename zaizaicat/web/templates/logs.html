@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title entrance-1">日志</h1>
+<p class="page-subtitle entrance-2">查看应用和下载日志</p>
+
+<div class="card-panel entrance-2" x-data="logsPage()" x-init="loadFiles()">
+  <div style="display:flex;gap:12px;margin-bottom:16px">
+    <select class="form-select" x-model="selectedFile" @change="loadContent()" style="max-width:300px">
+      <option value="">-- 选择日志文件 --</option>
+      <template x-for="f in files" :key="f.name">
+        <option :value="f.name" x-text="f.name + ' (' + Utils.formatBytes(f.size) + ')'"></option>
+      </template>
+    </select>
+    <button class="btn btn-secondary btn-sm" @click="loadFiles()">刷新</button>
+  </div>
+
+  <div x-show="content" class="log-area" style="max-height:600px" x-text="content"></div>
+  <div x-show="!content && selectedFile" style="padding:40px;text-align:center;color:var(--text-muted)">无内容</div>
+</div>
+<script>
+function logsPage() {
+  return {
+    files: [], selectedFile: '', content: '',
+    async loadFiles() {
+      try {
+        const data = await Alpine.store('app').api('/api/logs');
+        this.files = data.files || [];
+      } catch(e) {}
+    },
+    async loadContent() {
+      if (!this.selectedFile) { this.content = ''; return; }
+      try {
+        const data = await Alpine.store('app').api('/api/logs/' + this.selectedFile + '?lines=500');
+        this.content = data.content || '';
+      } catch(e) { this.content = '加载日志失败'; }
+    },
+  };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fsk-TikTok 视频下载工具</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f0f23; color: #e0e0e0;
+    min-height: 100vh;
+  }
+  .container { max-width: 780px; margin: 0 auto; padding: 30px 20px; }
+
+  .header {
+    text-align: center; margin-bottom: 28px;
+  }
+  .header h1 {
+    font-size: 24px; font-weight: 700;
+    background: linear-gradient(135deg, #4fc3f7, #e94560);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header p { color: #888; font-size: 14px; margin-top: 6px; }
+
+  .card {
+    background: #1a1a2e; border-radius: 12px;
+    padding: 20px; margin-bottom: 16px;
+    border: 1px solid #2a2a4a;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 600; color: #aaa; margin-bottom: 10px;
+  }
+
+  textarea {
+    width: 100%; min-height: 200px;
+    background: #0f3460; border: 1px solid #2a2a4a;
+    border-radius: 8px; color: #e0e0e0;
+    font-size: 13px; font-family: 'Consolas', 'Courier New', monospace;
+    padding: 14px; resize: vertical;
+    outline: none; transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: #4fc3f7; }
+  textarea::placeholder { color: #555; }
+
+  .input-hint { font-size: 12px; color: #666; margin-top: 6px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 32px; border-radius: 8px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    border: none; transition: all 0.2s;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: #4fc3f7; color: #0f0f23; }
+  .btn-primary:hover:not(:disabled) { background: #39b0e4; transform: translateY(-1px); }
+  .btn-secondary { background: #2a2a4a; color: #e0e0e0; }
+  .btn-secondary:hover:not(:disabled) { background: #3a3a5a; }
+
+  .toolbar { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .toolbar .spacer { flex: 1; }
+
+  .stats { display: flex; gap: 20px; margin-top: 4px; flex-wrap: wrap; }
+  .stat-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; }
+  .stat-item .num { color: #4fc3f7; font-weight: 600; }
+
+  #progress-area { display: none; }
+
+  .task-list { margin-top: 12px; }
+  .task-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; margin-bottom: 6px;
+    background: #16213e; border-radius: 8px;
+    font-size: 13px; transition: background 0.2s;
+  }
+  .task-item:hover { background: #1c2a4a; }
+  .task-index {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+    background: #2a2a4a; color: #888;
+  }
+  .task-item.status-downloading .task-index { background: #4fc3f7; color: #0f0f23; animation: pulse 1.5s infinite; }
+  .task-item.status-completed .task-index { background: #4caf50; color: #fff; }
+  .task-item.status-failed .task-index { background: #e94560; color: #fff; }
+  .task-item.status-waiting .task-index { background: #2a2a4a; color: #666; }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(79, 195, 247, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(79, 195, 247, 0); }
+  }
+
+  .task-info { flex: 1; min-width: 0; }
+  .task-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ccc; font-size: 12px; }
+
+  .progress-bar-wrapper { width: 100%; height: 4px; background: #2a2a4a; border-radius: 4px; overflow: hidden; margin-top: 4px; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #4fc3f7, #e94560); border-radius: 4px; transition: width 0.3s ease; width: 0%; }
+
+  .task-status-text { font-size: 12px; white-space: nowrap; flex-shrink: 0; min-width: 60px; text-align: right; }
+  .status-downloading .task-status-text { color: #4fc3f7; }
+  .status-completed .task-status-text { color: #4caf50; }
+  .status-failed .task-status-text { color: #e94560; }
+  .status-waiting .task-status-text { color: #666; }
+
+  #done-area { display: none; text-align: center; padding: 16px 0; }
+  #done-area .done-icon { font-size: 48px; margin-bottom: 10px; }
+  #done-area .done-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  #done-area .done-detail { color: #aaa; font-size: 14px; margin-bottom: 16px; }
+  #done-area .btn { margin: 0 4px; }
+
+  .error-msg { color: #e94560; font-size: 12px; margin-top: 4px; word-break: break-all; }
+
+  #status-bar { font-size: 13px; color: #888; margin-top: 12px; text-align: center; }
+
+  /* yt-dlp 下载提示 */
+  #init-status {
+    text-align: center; padding: 40px 20px;
+  }
+  #init-status .spinner {
+    width: 40px; height: 40px; border: 3px solid #2a2a4a;
+    border-top-color: #4fc3f7; border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #init-status .msg { color: #aaa; font-size: 14px; }
+  #init-status .sub-msg { color: #666; font-size: 12px; margin-top: 6px; }
+  #init-status .pbar {
+    width: 240px; height: 6px; background: #2a2a4a; border-radius: 6px;
+    overflow: hidden; margin: 12px auto 0;
+  }
+  #init-status .pbar-fill {
+    height: 100%; background: #4fc3f7; border-radius: 6px;
+    transition: width 0.3s; width: 0%;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>fsk-TikTok 视频下载工具</h1>
+    <p>粘贴剧集链接，一键批量下载到本地</p>
+  </div>
+
+  <!-- 输入区 -->
+  <div class="card" id="input-card">
+    <div class="card-title">粘贴 TikTok 视频链接</div>
+    <textarea id="url-input" placeholder="将剧集链接粘贴在这里，每行一个..."></textarea>
+    <div class="input-hint" id="url-count">已识别 0 个链接</div>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-start" onclick="startDownload()">开始下载</button>
+      <button class="btn btn-secondary" onclick="clearInput()">清空</button>
+      <button class="btn btn-secondary" id="btn-cookie" onclick="refreshCookie()">刷新登录态</button>
+    </div>
+    <div id="cookie-status" style="margin-top:8px;font-size:12px;"></div>
+    <!-- 代理设置 -->
+    <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:12px;color:#888;white-space:nowrap;">代理</span>
+      <input id="proxy-input" type="text" placeholder="例: http://127.0.0.1:7890" style="flex:1;padding:6px 10px;background:#1a1a2e;color:#ccc;border:1px solid #444;border-radius:4px;font-size:12px;" />
+      <button class="btn btn-secondary" onclick="setProxy()" style="font-size:12px;padding:6px 12px;">设置</button>
+      <span id="proxy-status" style="font-size:11px;color:#888;"></span>
+    </div>
+    <!-- 下载路径设置 -->
+    <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:12px;color:#888;white-space:nowrap;">下载到</span>
+      <input id="dl-path-input" type="text" readonly style="flex:1;padding:6px 10px;background:#1a1a2e;color:#ccc;border:1px solid #444;border-radius:4px;font-size:12px;cursor:default;" />
+      <button class="btn btn-secondary" onclick="chooseDownloadPath()" style="font-size:12px;padding:6px 12px;">更改</button>
+      <button class="btn btn-secondary" onclick="openFolder()" style="font-size:12px;padding:6px 12px;">打开目录</button>
+    </div>
+    <!-- 手动粘贴 Cookie 区域 -->
+    <div id="cookie-paste-area" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #333;">
+      <div style="font-size:13px;color:#ff9800;margin-bottom:8px;">
+        ⚠️ 请关闭 Chrome → 点击「刷新登录态」自动获取 或 手动粘贴 Cookie
+      </div>
+      <details>
+        <summary style="font-size:12px;color:#999;cursor:pointer;">如何手动获取 Cookie？</summary>
+        <div style="font-size:12px;color:#ccc;margin-top:8px;line-height:1.6;">
+          方法①：安装 Chrome 扩展
+          <a href="https://chromewebstore.google.com/detail/get-cookiestxt/bgaddhkoddajcdgocldbbfleckgcbcid" target="_blank" style="color:#4fc3f7;">Get cookies.txt</a>
+          → 打开 TikTok → 点击扩展图标 → 下载 cookies.txt → 将文件内容粘贴到下方<br>
+          方法②：关闭所有 Chrome 窗口 → 点击上方「刷新登录态」按钮
+        </div>
+      </details>
+      <textarea id="cookie-input" style="width:100%;height:100px;margin-top:8px;padding:8px;background:#1a1a2e;color:#ccc;border:1px solid #444;border-radius:4px;font-size:11px;font-family:monospace;resize:vertical;box-sizing:border-box;" placeholder="将 Netscape 格式的 Cookie 粘贴到这里..."></textarea>
+      <div style="margin-top:8px;">
+        <button class="btn btn-secondary" onclick="uploadCookies()">提交 Cookie</button>
+      </div>
+      <div id="cookie-upload-status" style="margin-top:6px;font-size:12px;"></div>
+    </div>
+  </div>
+
+  <!-- 进度区 -->
+  <div class="card" id="progress-area">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="card-title" style="margin-bottom:0;">下载进度</div>
+      <div class="stats">
+        <span class="stat-item">已完成: <span class="num" id="stat-completed">0</span></span>
+        <span class="stat-item">失败: <span class="num" id="stat-failed">0</span></span>
+        <span class="stat-item">总计: <span class="num" id="stat-total">0</span></span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-secondary" id="btn-pause" onclick="pauseDownload()" style="display:none;">暂停</button>
+      <button class="btn btn-primary" id="btn-resume" onclick="resumeDownload()" style="display:none;">继续</button>
+      <button class="btn btn-secondary" id="btn-stop" onclick="stopDownload()" style="display:none;background:#e94560;border-color:#e94560;">终止</button>
+    </div>
+    <div class="task-list" id="task-list"></div>
+
+    <div id="done-area">
+      <div class="done-icon">&#127881;</div>
+      <div class="done-title" id="done-title">全部下载完成！</div>
+      <div class="done-detail" id="done-detail"></div>
+      <div>
+        <button class="btn btn-primary" onclick="openFolder()">打开下载目录</button>
+        <button class="btn btn-primary" id="btn-retry" onclick="retryFailed()">续传剩余</button>
+        <button class="btn btn-secondary" onclick="resetAll()">继续下载</button>
+      </div>
+    </div>
+
+    <div id="status-bar"></div>
+  </div>
+</div>
+
+<script>
+// ===== SSE 连接 =====
+const evtSource = new EventSource('/progress');
+let taskItems = {};
+
+
+evtSource.addEventListener('connected', (e) => {
+  const data = JSON.parse(e.data);
+  if (data.ytDlpReady) {
+    document.getElementById('input-card').style.display = 'block';
+  }
+  checkCookieStatus();
+  checkFailedCount();
+  checkProxyStatus();
+  loadDownloadsPath();
+});
+
+evtSource.addEventListener('cookie-msg', (e) => {
+  const data = JSON.parse(e.data);
+  const el = document.getElementById('cookie-status');
+  el.style.display = 'block';
+  if (data.done) {
+    el.innerHTML = '<span style="color:#4caf50;">✓ ' + data.message + '</span>';
+    document.getElementById('btn-cookie').style.display = 'none';
+    document.getElementById('cookie-paste-area').style.display = 'none';
+    setTimeout(() => { el.style.display = 'none'; }, 3000);
+  } else if (data.error) {
+    el.innerHTML = '<span style="color:#e94560;">✗ ' + data.message.replace(/\n/g, '<br>') + '</span>';
+    document.getElementById('btn-cookie').style.display = 'inline-flex';
+    if (data.needsManual) {
+      document.getElementById('cookie-paste-area').style.display = 'block';
+    }
+  } else {
+    el.innerHTML = '<span style="color:#4fc3f7;">⟳ ' + data.message + '</span>';
+  }
+});
+
+evtSource.addEventListener('cookie-refresh', (e) => {
+  const data = JSON.parse(e.data);
+  document.getElementById('cookie-upload-status').innerHTML = '<span style="color:#4caf50;">' + data.message + '</span>';
+  document.getElementById('cookie-paste-area').style.display = 'none';
+  document.getElementById('cookie-status').style.display = 'block';
+  document.getElementById('cookie-status').innerHTML = '<span style="color:#4caf50;">✓ ' + data.message + '</span>';
+  setTimeout(() => { document.getElementById('cookie-status').style.display = 'none'; }, 3000);
+});
+
+evtSource.addEventListener('ytdlp-status', (e) => {
+  const data = JSON.parse(e.data);
+  
+  if (data.progress) {
+    
+  }
+  if (data.progress === 100 || data.message.includes('已就绪')) {
+    setTimeout(() => {
+      
+      document.getElementById('input-card').style.display = 'block';
+    }, 800);
+  }
+});
+
+evtSource.addEventListener('start', (e) => {
+  const data = JSON.parse(e.data);
+  document.getElementById('progress-area').style.display = 'block';
+  document.getElementById('done-area').style.display = 'none';
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-pause').style.display = 'inline-flex';
+  document.getElementById('btn-resume').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'inline-flex';
+  document.getElementById('btn-stop').disabled = false;
+  document.getElementById('status-bar').textContent = '';
+  renderTaskList(data.total);
+  document.getElementById('stat-completed').textContent = '0';
+  document.getElementById('stat-failed').textContent = '0';
+  document.getElementById('stat-total').textContent = data.total;
+});
+
+evtSource.addEventListener('paused', () => {
+  document.getElementById('btn-pause').style.display = 'none';
+  document.getElementById('btn-resume').style.display = 'inline-flex';
+  document.getElementById('btn-stop').style.display = 'inline-flex';
+  document.getElementById('status-bar').textContent = '⏸ 已暂停，可以继续或终止';
+  document.getElementById('status-bar').style.color = '#ff9800';
+});
+
+evtSource.addEventListener('resumed', () => {
+  document.getElementById('btn-pause').style.display = 'inline-flex';
+  document.getElementById('btn-resume').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'inline-flex';
+  document.getElementById('status-bar').textContent = '';
+});
+
+evtSource.addEventListener('stopped', (e) => {
+  const data = JSON.parse(e.data);
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-pause').style.display = 'none';
+  document.getElementById('btn-resume').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('status-bar').textContent = '🛑 ' + (data.message || '下载已终止');
+  document.getElementById('status-bar').style.color = '#e94560';
+});
+
+evtSource.addEventListener('pause-wait', () => {
+  document.getElementById('status-bar').textContent = '⏸ 已暂停';
+  document.getElementById('status-bar').style.color = '#ff9800';
+});
+
+evtSource.addEventListener('paused-task', () => {
+  // 暂停中断的任务不计入失败，只是跳过
+});
+
+evtSource.addEventListener('begin', (e) => {
+  const data = JSON.parse(e.data);
+  updateTask(data.index, { status: 'downloading', percent: 0 });
+  // 显示 URL
+  const item = taskItems[data.index];
+  if (item) {
+    const urlEl = item.querySelector('.task-url');
+    urlEl.innerHTML = `<a href="${data.url}" target="_blank">${data.url}</a>`;
+  }
+});
+
+evtSource.addEventListener('progress', (e) => {
+  const data = JSON.parse(e.data);
+  updateTask(data.index, { status: 'downloading', percent: data.percent, speed: data.speed || '' });
+});
+
+evtSource.addEventListener('complete', (e) => {
+  const data = JSON.parse(e.data);
+  updateTask(data.index, { status: 'completed', percent: 100 });
+  document.getElementById('stat-completed').textContent =
+    parseInt(document.getElementById('stat-completed').textContent) + 1;
+});
+
+evtSource.addEventListener('error', (e) => {
+  const data = JSON.parse(e.data);
+  updateTask(data.index, { status: 'failed', error: data.message });
+  document.getElementById('stat-failed').textContent =
+    parseInt(document.getElementById('stat-failed').textContent) + 1;
+});
+
+evtSource.addEventListener('done', (e) => {
+  const data = JSON.parse(e.data);
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-pause').style.display = 'none';
+  document.getElementById('btn-resume').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('status-bar').textContent = '';
+  document.getElementById('done-area').style.display = 'block';
+  if (data.failed === 0) {
+    document.getElementById('done-title').textContent = '全部下载完成！';
+    document.getElementById('done-detail').textContent = `共成功下载 ${data.completed} 个视频`;
+    document.getElementById('btn-retry').style.display = 'none';
+  } else {
+    document.getElementById('done-title').textContent = '下载完成（部分失败）';
+    document.getElementById('done-detail').textContent =
+      `成功 ${data.completed} 个，失败 ${data.failed} 个，总计 ${data.total} 个`;
+    document.getElementById('btn-retry').style.display = 'inline-flex';
+  }
+});
+
+evtSource.addEventListener('fatal', (e) => {
+  const data = JSON.parse(e.data);
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-pause').style.display = 'none';
+  document.getElementById('btn-resume').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'none';
+  const bar = document.getElementById('status-bar');
+  bar.innerHTML = '&#10060; ' + data.message;
+  bar.style.color = '#e94560';
+});
+
+// ===== 任务列表渲染 =====
+function renderTaskList(total) {
+  const list = document.getElementById('task-list');
+  list.innerHTML = '';
+  taskItems = {};
+  for (let i = 0; i < total; i++) {
+    const item = document.createElement('div');
+    item.className = 'task-item status-waiting';
+    item.id = 'task-' + i;
+    item.innerHTML = `
+      <div class="task-index">${i + 1}</div>
+      <div class="task-info">
+        <div class="task-url"></div>
+        <div class="progress-bar-wrapper">
+          <div class="progress-bar-fill" id="pbar-${i}"></div>
+        </div>
+      </div>
+      <div class="task-status-text">等待中</div>
+    `;
+    list.appendChild(item);
+    taskItems[i] = item;
+  }
+}
+
+function updateTask(index, data) {
+  const item = taskItems[index];
+  if (!item) return;
+  item.className = 'task-item status-' + data.status;
+  if (data.percent !== undefined) {
+    const bar = document.getElementById('pbar-' + index);
+    if (bar) bar.style.width = data.percent + '%';
+  }
+  const statusEl = item.querySelector('.task-status-text');
+  switch (data.status) {
+    case 'waiting': statusEl.textContent = '等待中'; break;
+    case 'downloading':
+      if (data.percent !== undefined) {
+        statusEl.textContent = (data.speed ? data.speed + ' ' : '') + data.percent.toFixed(1) + '%';
+      } else {
+        statusEl.textContent = '下载中...';
+      }
+      break;
+    case 'completed': statusEl.textContent = '已完成'; break;
+    case 'failed':
+      statusEl.textContent = '失败';
+      let errEl = item.querySelector('.error-msg');
+      if (!errEl && data.error) {
+        errEl = document.createElement('div');
+        errEl.className = 'error-msg';
+        item.querySelector('.task-info').appendChild(errEl);
+      }
+      if (errEl) errEl.textContent = data.error;
+      break;
+  }
+}
+
+// ===== 输入解析 =====
+document.getElementById('url-input').addEventListener('input', updateUrlCount);
+function updateUrlCount() {
+  const urls = getUrls(document.getElementById('url-input').value);
+  document.getElementById('url-count').textContent = `已识别 ${urls.length} 个链接`;
+}
+function getUrls(text) {
+  return [...new Set(text.split('\n').map(l => l.trim()).filter(l => l.includes('tiktok.com/')))];
+
+}
+
+// ===== 操作函数 =====
+async function startDownload() {
+  const urls = getUrls(document.getElementById('url-input').value);
+  if (urls.length === 0) { alert('请先粘贴 TikTok 视频链接'); return; }
+  try {
+    const resp = await fetch('/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls }),
+    });
+    const result = await resp.json();
+    if (!resp.ok) alert(result.error || '启动失败');
+  } catch (err) { alert('网络错误: ' + err.message); }
+}
+
+function clearInput() {
+  document.getElementById('url-input').value = '';
+  updateUrlCount();
+}
+
+function resetAll() {
+  document.getElementById('progress-area').style.display = 'none';
+  document.getElementById('done-area').style.display = 'none';
+  document.getElementById('task-list').innerHTML = '';
+  taskItems = {};
+}
+
+async function loadDownloadsPath() {
+  try {
+    const resp = await fetch('/downloads-path');
+    const data = await resp.json();
+    document.getElementById('dl-path-input').value = data.path;
+  } catch (_) {}
+}
+
+async function chooseDownloadPath() {
+  const current = document.getElementById('dl-path-input').value;
+  const newPath = prompt('请输入下载文件夹路径：', current);
+  if (!newPath || !newPath.trim()) return;
+  const folderPath = newPath.trim();
+  try {
+    const resp = await fetch('/set-downloads-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderPath }),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      document.getElementById('dl-path-input').value = data.path;
+    } else {
+      alert(data.error || '设置失败');
+    }
+  } catch (e) {
+    alert('请求失败: ' + e.message);
+  }
+}
+
+async function openFolder() {
+  try {
+    await fetch('/open-folder', { method: 'POST' });
+  } catch (_) {}
+}
+
+async function retryFailed() {
+  document.getElementById('done-area').style.display = 'none';
+  document.getElementById('task-list').innerHTML = '';
+  taskItems = {};
+  try {
+    const resp = await fetch('/retry-failed', { method: 'POST' });
+    if (!resp.ok) {
+      const err = await resp.json();
+      alert(err.error || '重试失败');
+      resetAll();
+    }
+  } catch (_) {}
+}
+
+async function checkCookieStatus() {
+  try {
+    const resp = await fetch('/cookie-status');
+    const data = await resp.json();
+    const el = document.getElementById('cookie-status');
+    if (data.ok && !data.expired) {
+      el.innerHTML = '<span style="color:#4caf50;">\u2713 \u5df2\u767b\u5f55 (' + (data.size/1000).toFixed(0) + 'KB)</span>';
+    } else if (data.ok && data.expired) {
+      el.innerHTML = '<span style="color:#ff9800;">\u26a0 \u767b\u5f55\u6001\u5df2\u8fc7\u671f</span>';
+      document.getElementById('btn-cookie').style.display = 'inline-flex';
+    } else {
+      el.innerHTML = '<span style="color:#888;">\u672a\u68c0\u6d4b\u5230\u767b\u5f55\u6001\uff0c\u70b9\u51fb\u5f00\u59cb\u4e0b\u8f7d\u5c06\u81ea\u52a8\u83b7\u53d6</span>';
+    }
+  } catch (_) {}
+}
+
+async function checkFailedCount() {
+  try {
+    const resp = await fetch('/failed-count');
+    const data = await resp.json();
+    if (data.count > 0) {
+      document.getElementById('done-area').style.display = 'block';
+      document.getElementById('done-title').textContent = '有未完成的下载任务';
+      document.getElementById('done-detail').textContent = `${data.count} 个视频待续传（含失败及后续未下载）`;
+      document.getElementById('btn-retry').style.display = 'inline-flex';
+    }
+  } catch (_) {}
+}
+
+async function checkProxyStatus() {
+  try {
+    const resp = await fetch('/proxy-status');
+    const data = await resp.json();
+    const el = document.getElementById('proxy-status');
+    if (data.detected) {
+      el.innerHTML = `<span style="color:#4caf50;">${data.proxy}</span>`;
+      document.getElementById('proxy-input').value = data.proxy;
+    } else {
+      el.innerHTML = '<span style="color:#888;">未设置</span>';
+    }
+  } catch (_) {}
+}
+
+async function setProxy() {
+  const proxy = document.getElementById('proxy-input').value.trim();
+  if (!proxy) {
+    alert('请输入代理地址，例如 http://127.0.0.1:7890');
+    return;
+  }
+  try {
+    const resp = await fetch('/set-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proxy }),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      document.getElementById('proxy-status').innerHTML = `<span style="color:#4caf50;">${proxy}</span>`;
+    } else {
+      alert(data.error || '设置失败');
+    }
+  } catch (_) {
+    alert('设置代理失败');
+  }
+}
+
+async function refreshCookie() {
+  document.getElementById('btn-cookie').disabled = true;
+  document.getElementById('btn-cookie').textContent = '刷新中...';
+  try {
+    await fetch('/refresh-cookies', { method: 'POST' });
+  } catch (_) {}
+  setTimeout(() => {
+    document.getElementById('btn-cookie').disabled = false;
+    document.getElementById('btn-cookie').textContent = '刷新登录态';
+  }, 5000);
+}
+
+async function uploadCookies() {
+  const content = document.getElementById('cookie-input').value.trim();
+  if (!content) {
+    document.getElementById('cookie-upload-status').innerHTML = '<span style="color:#e94560;">请先粘贴 Cookie 内容</span>';
+    return;
+  }
+  document.getElementById('cookie-upload-status').innerHTML = '<span style="color:#4fc3f7;">⟳ 正在提交...</span>';
+  try {
+    const resp = await fetch('/upload-cookies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      document.getElementById('cookie-upload-status').innerHTML = '<span style="color:#4caf50;">✅ Cookie 已保存，大小: ' + data.size + ' 字节</span>';
+      document.getElementById('cookie-paste-area').style.display = 'none';
+      document.getElementById('cookie-status').style.display = 'block';
+      document.getElementById('cookie-status').innerHTML = '<span style="color:#4caf50;">✅ Cookie 已就绪，可以开始下载</span>';
+      setTimeout(() => { document.getElementById('cookie-status').style.display = 'none'; }, 4000);
+    } else {
+      document.getElementById('cookie-upload-status').innerHTML = '<span style="color:#e94560;">❌ ' + data.error + '</span>';
+    }
+  } catch (e) {
+    document.getElementById('cookie-upload-status').innerHTML = '<span style="color:#e94560;">❌ 提交失败: ' + e.message + '</span>';
+  }
+}
+
+async function pauseDownload() {
+  document.getElementById('btn-pause').disabled = true;
+  try {
+    await fetch('/pause', { method: 'POST' });
+  } catch (_) {}
+  document.getElementById('btn-pause').disabled = false;
+}
+
+async function resumeDownload() {
+  document.getElementById('btn-resume').disabled = true;
+  try {
+    await fetch('/resume', { method: 'POST' });
+  } catch (_) {}
+  document.getElementById('btn-resume').disabled = false;
+}
+
+async function stopDownload() {
+  if (!confirm('确定要终止所有下载任务吗？已下载的文件不会被删除。')) return;
+  document.getElementById('btn-stop').disabled = true;
+  try {
+    await fetch('/stop', { method: 'POST' });
+  } catch (_) {}
+}
+</script>
+</body>
+</html>

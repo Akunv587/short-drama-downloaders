@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.spec
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+logs/*.log*
+data/*.db*
+data/*.db-shm
+data/*.db-wal
+data/*.db
+downloads/*
+!downloads/.gitkeep
+cookies.txt
+.env
+
+# Qoder
+.qoder/

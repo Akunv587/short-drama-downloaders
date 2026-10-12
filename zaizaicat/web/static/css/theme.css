@@ -1,0 +1,93 @@
+/* ═══════════════════════════════════════════════════════════
+   zaizaicat — Theme Variables (Light / Dark)
+   ═══════════════════════════════════════════════════════════ */
+
+:root,
+[data-theme="light"] {
+  --bg-primary: #f8f9fa;
+  --bg-surface: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-card-hover: rgba(255, 255, 255, 0.95);
+  --bg-input: rgba(0, 0, 0, 0.02);
+  --bg-input-focus: rgba(0, 0, 0, 0.04);
+  --bg-sidebar: rgba(255, 255, 255, 0.9);
+  --bg-log: #fafafa;
+
+  --text-primary: #1a1a2e;
+  --text-secondary: #555;
+  --text-muted: #999;
+  --text-inverse: #ffffff;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.14);
+  --border-focus: rgba(0, 0, 0, 0.22);
+
+  --accent: #6366f1;
+  --accent-light: rgba(99, 102, 241, 0.1);
+  --accent-dim: rgba(99, 102, 241, 0.05);
+
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
+
+  --btn-primary-bg: #1a1a2e;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover-bg: #333;
+  --btn-disabled-bg: #e0e0e0;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+
+  --sidebar-width: 240px;
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #030303;
+  --bg-surface: #0a0a0a;
+  --bg-card: rgba(12, 12, 12, 0.85);
+  --bg-card-hover: rgba(18, 18, 18, 0.95);
+  --bg-input: rgba(15, 15, 15, 0.9);
+  --bg-input-focus: rgba(20, 20, 20, 0.95);
+  --bg-sidebar: rgba(6, 6, 6, 0.92);
+  --bg-log: #050505;
+
+  --text-primary: #d4d4d4;
+  --text-secondary: #888;
+  --text-muted: #555;
+  --text-inverse: #000000;
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --border-focus: rgba(255, 255, 255, 0.22);
+
+  --accent: #818cf8;
+  --accent-light: rgba(129, 140, 248, 0.12);
+  --accent-dim: rgba(129, 140, 248, 0.05);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+  --btn-primary-bg: #ffffff;
+  --btn-primary-text: #000000;
+  --btn-primary-hover-bg: #e8e8e8;
+  --btn-disabled-bg: #2a2a2a;
+}
+
+/* Smooth theme transition */
+body {
+  transition: background-color var(--transition-slow), color var(--transition-slow);
+}

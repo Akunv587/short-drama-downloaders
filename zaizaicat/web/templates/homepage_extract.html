@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title entrance-1">主页提取</h1>
+<p class="page-subtitle entrance-2">从 TikTok 主页提取短剧信息</p>
+<div class="card-panel entrance-2" x-data="homepageExtract()">
+  <div class="form-group">
+    <label class="form-label">TikTok 主页链接</label>
+    <input class="form-input" x-model="url" placeholder="https://www.tiktok.com/@username"/>
+  </div>
+  <button class="btn btn-primary" @click="extract()" :disabled="loading">
+    <span x-show="!loading">提取</span>
+    <span x-show="loading">提取中...</span>
+  </button>
+
+  <!-- Results Table -->
+  <div x-show="dramas.length > 0" style="margin-top:20px">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>名称</th><th>播放量</th><th>集数</th><th>首集链接</th><th>标签</th><th>操作</th></tr></thead>
+        <tbody>
+          <template x-for="d in dramas" :key="d.name">
+            <tr>
+              <td x-text="d.name"></td>
+              <td x-text="d.play_count"></td>
+              <td x-text="d.episode_count"></td>
+              <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="d.first_episode_url"></td>
+              <td x-text="d.tags"></td>
+              <td>
+                <button class="btn btn-secondary btn-xs" @click="downloadDrama(d)">下载</button>
+                <button class="btn btn-secondary btn-xs" style="margin-left:4px" @click="addToDB(d)">+入库</button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-secondary btn-sm" @click="exportCSV()">导出 CSV</button>
+    </div>
+  </div>
+</div>
+<script>
+function homepageExtract() {
+  return {
+    url: '', loading: false, dramas: [],
+    async extract() {
+      if (!this.url.trim()) return;
+      this.loading = true;
+      try {
+        const data = await Alpine.store('app').api('/api/extract/homepage', {
+          method: 'POST',
+          body: JSON.stringify({ url: this.url.trim() }),
+        });
+        this.dramas = data.dramas || [];
+      } catch(e) {} finally { this.loading = false; }
+    },
+    async downloadDrama(d) {
+      if (!d.first_episode_url) {
+        Alpine.store('app').showToast('无首集链接', 'warning');
+        return;
+      }
+      try {
+        await Alpine.store('app').api('/api/download/start', {
+          method: 'POST',
+          body: JSON.stringify({ url: d.first_episode_url, drama_name: d.name, output_dir: '' }),
+        });
+        Alpine.store('app').showToast('已提交下载: ' + d.name, 'success');
+      } catch(e) {
+        Alpine.store('app').showToast('提交失败', 'error');
+      }
+    },
+    async addToDB(d) {
+      try {
+        await Alpine.store('app').api('/api/drama', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: d.name,
+            play_count: d.play_count,
+            episode_count: d.episode_count,
+            first_episode_url: d.first_episode_url,
+            tags: d.tags,
+            source_platform: 'tiktok',
+            data_source: '主页提取',
+          }),
+        });
+        Alpine.store('app').showToast('已入库: ' + d.name, 'success');
+      } catch(e) {
+        Alpine.store('app').showToast('入库失败', 'error');
+      }
+    },
+    exportCSV() {
+      const header = 'Name,Plays,Episodes,First Link,Tags,Publish Date\n';
+      const rows = this.dramas.map(d =>
+        [d.name,d.play_count,d.episode_count,d.first_episode_url,d.tags,d.publish_date].join(',')
+      ).join('\n');
+      const blob = new Blob([header+rows],{type:'text/csv'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dramas.csv'; a.click();
+    },
+  };
+}
+</script>
+{% endblock %}

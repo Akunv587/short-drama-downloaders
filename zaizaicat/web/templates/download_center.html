@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="page-title entrance-1">下载中心</h1>
+<p class="page-subtitle entrance-2">管理所有下载任务</p>
+
+<div class="card-panel entrance-2" x-data="downloadCenter()" x-init="init()">
+  <!-- Filters -->
+  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn btn-sm" :class="filter===''?'btn-primary':'btn-secondary'" @click="filter='';loadTasks()">全部</button>
+    <button class="btn btn-sm" :class="filter==='running'?'btn-primary':'btn-secondary'" @click="filter='running';loadTasks()">运行中</button>
+    <button class="btn btn-sm" :class="filter==='queued'?'btn-primary':'btn-secondary'" @click="filter='queued';loadTasks()">排队中</button>
+    <button class="btn btn-sm" :class="filter==='completed'?'btn-primary':'btn-secondary'" @click="filter='completed';loadTasks()">已完成</button>
+    <button class="btn btn-sm" :class="filter==='failed'?'btn-primary':'btn-secondary'" @click="filter='failed';loadTasks()">失败</button>
+  </div>
+
+  <!-- Task List -->
+  <div style="max-height:500px;overflow-y:auto">
+    <template x-if="tasks.length === 0">
+      <div style="padding:40px;text-align:center;color:var(--text-muted)">暂无任务，请从批量下载或范围下载提交。</div>
+    </template>
+    <template x-for="task in tasks" :key="task.id">
+      <div :data-task-id="task.id" style="padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div>
+            <span style="font-weight:600" x-text="task.drama_name || '未知'"></span>
+            <span style="font-size:12px;color:var(--text-muted);margin-left:8px" x-text="task.platform"></span>
+            <span style="font-size:11px;color:var(--text-muted);margin-left:4px" x-text="task.episode_number ? 'E'+task.episode_number : ''"></span>
+          </div>
+          <span class="badge" :class="statusBadgeClass(task.status)" x-text="task.status"></span>
+        </div>
+        <div class="progress-bar" style="margin-bottom:6px">
+          <div class="progress-fill" :style="{width:(task.progress*100)+'%'}"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <template x-if="task.status === 'running'">
+            <button class="btn btn-secondary btn-xs" @click="pauseTask(task.id)">暂停</button>
+          </template>
+          <template x-if="task.status === 'paused'">
+            <button class="btn btn-secondary btn-xs" @click="resumeTask(task.id)">恢复</button>
+          </template>
+          <template x-if="task.status === 'failed'">
+            <button class="btn btn-secondary btn-xs" @click="retryTask(task.id)">重试</button>
+          </template>
+          <button class="btn btn-secondary btn-xs" @click="cancelTask(task.id)" x-show="['queued','running','paused'].includes(task.status)">取消</button>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>
+<script>
+function downloadCenter() {
+  return {
+    filter: '',
+    tasks: [],
+    init() {
+      this.loadTasks();
+      DownloadCenter.connect();
+      setInterval(() => this.loadTasks(), 3000);
+    },
+    async loadTasks() {
+      try {
+        const params = this.filter ? '?status=' + this.filter : '';
+        const data = await Alpine.store('app').api('/api/tasks' + params);
+        this.tasks = data.tasks || [];
+      } catch(e) {}
+    },
+    statusBadgeClass(s) {
+      const m = {queued:'badge-yellow',running:'badge-blue',completed:'badge-green',failed:'badge-red',paused:'badge-yellow',cancelled:'badge-red'};
+      return m[s] || '';
+    },
+    async cancelTask(id) { await DownloadCenter.cancelTask(id); this.loadTasks(); },
+    async pauseTask(id) { await DownloadCenter.pauseTask(id); this.loadTasks(); },
+    async resumeTask(id) { await DownloadCenter.resumeTask(id); this.loadTasks(); },
+    async retryTask(id) { await Alpine.store('app').api('/api/download/retry/'+id,{method:'POST'}); this.loadTasks(); },
+  };
+}
+</script>
+{% endblock %}
